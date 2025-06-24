@@ -1,6 +1,7 @@
 const listaPokemon = document.getElementById('listaPokemon');
 const botonHeader = document.querySelectorAll('.btn-header');
 let URL = 'https://pokeapi.co/api/v2/pokemon';
+let debounceTimeout;
 
 for (let i = 1; i <= 721; i++) {
     fetch(`${URL}/${i}`)
@@ -36,8 +37,8 @@ function mostrarPokemon(pokemon) {
                             ${tipos}
                         </div>
                         <div class="pokemon-stats">
-                            <p class="stat">${pokemon.height}</p>
-                            <p class="stat">${pokemon.weight}</p>
+                            <p class="stat">${pokemon.height} m</p>
+                            <p class="stat">${pokemon.weight} kg</p>
                         </div>
                     </div>
     `;
@@ -63,3 +64,55 @@ botonHeader.forEach(boton => {
         }
     });
 });
+
+const formBusqueda = document.getElementById('form-busqueda');
+const inputBusqueda = document.getElementById('input-busqueda');
+
+function normalizarTexto(texto) {
+    return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+inputBusqueda.addEventListener('input', function () {
+    clearTimeout(debounceTimeout);
+    debounceTimeout = setTimeout(() => {
+      let valor = inputBusqueda.value.trim().toLowerCase();
+      valor = normalizarTexto(valor);
+      listaPokemon.innerHTML = '';
+  
+      if (valor) {
+        const coincidencias = nombresPokemon.filter(nombre =>
+          normalizarTexto(nombre).includes(valor)
+        );
+  
+        if (coincidencias.length === 0) {
+          listaPokemon.innerHTML = '<p>No se encontraron coincidencias.</p>';
+        } else {
+          coincidencias.slice(0, 10).forEach(nombre => {
+            fetch(`${URL}/${nombre}`)
+              .then(response => response.json())
+              .then(data => mostrarPokemon(data))
+              .catch(error => console.error(error));
+          });
+        }
+      } else {
+        for (let i = 1; i <= 20; i++) {
+          fetch(`${URL}/${i}`)
+            .then(response => response.json())
+            .then(data => mostrarPokemon(data));
+        }
+      }
+    }, 300);
+    listaPokemon.innerHTML = '<p>Buscando...</p>';
+  });
+  
+
+let nombresPokemon = [];
+
+fetch('https://pokeapi.co/api/v2/pokemon?limit=1000')
+  .then(response => response.json())
+  .then(data => {
+    nombresPokemon = data.results.map(p => p.name);
+  });
+
+/* Aquí comienza el modo oscuro */
+
