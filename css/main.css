@@ -132,6 +132,12 @@ main {
     z-index: -1;
     color: var(--clr-gray);
 }
+@media screen and (max-width: 700px) {
+    .pokemon-id-back {
+        font-size: 4rem;
+    }
+}
+  
 
 .pokemon-imagen {
     padding-inline: 1rem;

@@ -3,12 +3,19 @@ const botonHeader = document.querySelectorAll('.btn-header');
 let URL = 'https://pokeapi.co/api/v2/pokemon';
 let debounceTimeout;
 
-for (let i = 1; i <= 721; i++) {
-    fetch(`${URL}/${i}`)
-        .then(response => response.json())
-        .then(data => mostrarPokemon(data)
-        )
-}
+fetch(`${URL}?limit=721`)
+  .then(res => res.json())
+  .then(data => {
+    const lista = data.results;
+    listaPokemon.innerHTML = '';
+    lista.slice(0, 20).forEach(pokemon => {
+      fetch(pokemon.url)
+        .then(res => res.json())
+        .then(data => mostrarPokemon(data));
+    });
+    nombresPokemon = lista.map(p => p.name);
+  });
+
 function mostrarPokemon(pokemon) {
 
     let tipos = pokemon.types.map((tipo) => `<p class="${tipo.type.name} tipo">${tipo.type.name}</p>`).join('');
@@ -49,21 +56,26 @@ botonHeader.forEach(boton => {
         const botonId = event.currentTarget.id;
         listaPokemon.innerHTML = '';
 
-        for (let i = 1; i <= 721; i++) {
-            fetch(`${URL}/${i}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (botonId === 'ver-todos') {
-                        mostrarPokemon(data);
-                    }
-                    const tipos = data.types.map(type => type.type.name);
-                    if (tipos.some(tipo => tipo.includes(botonId))) {
-                        mostrarPokemon(data);
-                    }
-                })
-        }
+        fetch(`${URL}?limit=721`)
+        .then(res => res.json())
+        .then(data => {
+          const lista = data.results;
+          listaPokemon.innerHTML = '';
+      
+          lista.forEach(pokemon => {
+            fetch(pokemon.url)
+              .then(res => res.json())
+              .then(data => {
+                const tipos = data.types.map(type => type.type.name);
+                if (botonId === 'ver-todos' || tipos.includes(botonId)) {
+                  mostrarPokemon(data);
+                }
+              })
+              .catch(err => console.error(err));
+          });
+        });
     });
-});
+  });
 
 const formBusqueda = document.getElementById('form-busqueda');
 const inputBusqueda = document.getElementById('input-busqueda');
@@ -116,3 +128,5 @@ fetch('https://pokeapi.co/api/v2/pokemon?limit=1000')
 
 /* Aquí comienza el modo oscuro */
 
+
+  
