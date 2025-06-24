@@ -1,132 +1,137 @@
 const listaPokemon = document.getElementById('listaPokemon');
+const inputBusqueda = document.getElementById('input-busqueda');
+const formBusqueda = document.getElementById('form-busqueda');
 const botonHeader = document.querySelectorAll('.btn-header');
-let URL = 'https://pokeapi.co/api/v2/pokemon';
+
+const API_URL = 'https://pokeapi.co/api/v2/pokemon';
+let listaGlobal = [];
+let nombresPokemon = [];
 let debounceTimeout;
 
-fetch(`${URL}?limit=721`)
-  .then(res => res.json())
-  .then(data => {
-    const lista = data.results;
-    listaPokemon.innerHTML = '';
-    lista.slice(0, 20).forEach(pokemon => {
-      fetch(pokemon.url)
-        .then(res => res.json())
-        .then(data => mostrarPokemon(data));
+// 🔄 Obtener lista global una sola vez
+function cargarListaPokemon(limit = 721) {
+  return fetch(`${API_URL}?limit=${limit}`)
+    .then(res => {
+      if (!res.ok) throw new Error('No se pudo obtener la lista global');
+      return res.json();
+    })
+    .then(({ results }) => {
+      listaGlobal = results;
+      nombresPokemon = results.map(p => p.name);
+      return results;
     });
-    nombresPokemon = lista.map(p => p.name);
-  });
+}
 
+// 🧠 Obtener detalles de un Pokémon usando .url
+function obtenerDetalle(url) {
+  return fetch(url).then(res => res.json());
+}
+
+// 🎨 Mostrar una tarjeta de Pokémon
 function mostrarPokemon(pokemon) {
+  const tipos = pokemon.types.map(t => `<p class="${t.type.name} tipo">${t.type.name}</p>`).join('');
+  const pokeId = pokemon.id.toString().padStart(3, '0');
 
-    let tipos = pokemon.types.map((tipo) => `<p class="${tipo.type.name} tipo">${tipo.type.name}</p>`).join('');
-
-    let pokeId = pokemon.id.toString();
-    if (pokeId.length === 1) {
-        pokeId = '00' + pokeId;
-    } else if (pokeId.length === 2) {
-        pokeId = '0' + pokeId;
-    }
-
-    const pokemonDiv = document.createElement('div');
-    pokemonDiv.classList.add('pokemon');
-    pokemonDiv.innerHTML = `
-        <p class="pokemon-id-back">#${pokeId}</p> 
-                    <div class="pokemon-imagen">
-                        <img src="${pokemon.sprites.other["official-artwork"].front_default}"
-                            alt="${pokemon.name}">
-                    </div>
-                    <div class="pokemon-info">
-                        <div class="nombre-contenedor">
-                            <p class="pokemon-id">#${pokeId}</p>
-                            <h2 class="pokemon-nombre">${pokemon.name}</h2>
-                        </div>
-                        <div class="pokemon-tipos">
-                            ${tipos}
-                        </div>
-                        <div class="pokemon-stats">
-                            <p class="stat">${pokemon.height} m</p>
-                            <p class="stat">${pokemon.weight} kg</p>
-                        </div>
-                    </div>
-    `;
-    listaPokemon.appendChild(pokemonDiv);
+  const div = document.createElement('div');
+  div.classList.add('pokemon');
+  div.innerHTML = `
+    <p class="pokemon-id-back">#${pokeId}</p>
+    <div class="pokemon-imagen">
+      <img src="${pokemon.sprites.other["official-artwork"].front_default}" alt="${pokemon.name}">
+    </div>
+    <div class="pokemon-info">
+      <div class="nombre-contenedor">
+        <p class="pokemon-id">#${pokeId}</p>
+        <h2 class="pokemon-nombre">${pokemon.name}</h2>
+      </div>
+      <div class="pokemon-tipos">${tipos}</div>
+      <div class="pokemon-stats">
+        <p class="stat">${pokemon.height} m</p>
+        <p class="stat">${pokemon.weight} kg</p>
+      </div>
+    </div>
+  `;
+  listaPokemon.appendChild(div);
 }
-botonHeader.forEach(boton => {
-    boton.addEventListener('click', (event) => {
-        const botonId = event.currentTarget.id;
-        listaPokemon.innerHTML = '';
 
-        fetch(`${URL}?limit=721`)
-        .then(res => res.json())
-        .then(data => {
-          const lista = data.results;
-          listaPokemon.innerHTML = '';
-      
-          lista.forEach(pokemon => {
-            fetch(pokemon.url)
-              .then(res => res.json())
-              .then(data => {
-                const tipos = data.types.map(type => type.type.name);
-                if (botonId === 'ver-todos' || tipos.includes(botonId)) {
-                  mostrarPokemon(data);
-                }
-              })
-              .catch(err => console.error(err));
-          });
-        });
-    });
-  });
+// 📦 Cargar una lista de Pokémon y mostrarlos
+function cargarPokemones(lista) {
+  listaPokemon.innerHTML = '';
+  lista.forEach(p =>
+    obtenerDetalle(p.url)
+      .then(data => mostrarPokemon(data))
+      .catch(err => console.error(err))
+  );
+}
 
-const formBusqueda = document.getElementById('form-busqueda');
-const inputBusqueda = document.getElementById('input-busqueda');
+// 🔍 Buscar Pokémon por nombre parcial
+function buscarPokemon(texto) {
+  const valor = normalizarTexto(texto.trim().toLowerCase());
+  listaPokemon.innerHTML = '<p>Buscando...</p>';
 
+  if (!valor) {
+    cargarPokemones(listaGlobal.slice(0, 20));
+    return;
+  }
+
+  const coincidencias = listaGlobal.filter(p =>
+    normalizarTexto(p.name).includes(valor)
+  );
+
+  if (coincidencias.length === 0) {
+    listaPokemon.innerHTML = '<p>No se encontraron coincidencias.</p>';
+    return;
+  }
+
+  listaPokemon.innerHTML = '';
+  coincidencias.slice(0, 10).forEach(p =>
+    obtenerDetalle(p.url).then(data => mostrarPokemon(data))
+  );
+}
+
+// 🧽 Limpiar texto para búsqueda flexible
 function normalizarTexto(texto) {
-    return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
-inputBusqueda.addEventListener('input', function () {
+// 🎛 Filtro por tipo
+function aplicarFiltroPorTipo(tipo) {
+  listaPokemon.innerHTML = '<p>Cargando...</p>';
+
+  const resultados = [];
+
+  listaGlobal.forEach(p => {
+    obtenerDetalle(p.url)
+      .then(data => {
+        const tipos = data.types.map(t => t.type.name);
+        if (tipo === 'ver-todos' || tipos.includes(tipo)) {
+          resultados.push(data);
+          if (resultados.length === 1) listaPokemon.innerHTML = '';
+          mostrarPokemon(data);
+        }
+      })
+      .catch(err => console.error(err));
+  });
+}
+
+// 🕹 Configurar eventos
+function inicializarEventos() {
+  inputBusqueda.addEventListener('input', () => {
     clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(() => {
-      let valor = inputBusqueda.value.trim().toLowerCase();
-      valor = normalizarTexto(valor);
-      listaPokemon.innerHTML = '';
-  
-      if (valor) {
-        const coincidencias = nombresPokemon.filter(nombre =>
-          normalizarTexto(nombre).includes(valor)
-        );
-  
-        if (coincidencias.length === 0) {
-          listaPokemon.innerHTML = '<p>No se encontraron coincidencias.</p>';
-        } else {
-          coincidencias.slice(0, 10).forEach(nombre => {
-            fetch(`${URL}/${nombre}`)
-              .then(response => response.json())
-              .then(data => mostrarPokemon(data))
-              .catch(error => console.error(error));
-          });
-        }
-      } else {
-        for (let i = 1; i <= 20; i++) {
-          fetch(`${URL}/${i}`)
-            .then(response => response.json())
-            .then(data => mostrarPokemon(data));
-        }
-      }
+      buscarPokemon(inputBusqueda.value);
     }, 300);
-    listaPokemon.innerHTML = '<p>Buscando...</p>';
-  });
-  
-
-let nombresPokemon = [];
-
-fetch('https://pokeapi.co/api/v2/pokemon?limit=1000')
-  .then(response => response.json())
-  .then(data => {
-    nombresPokemon = data.results.map(p => p.name);
   });
 
-/* Aquí comienza el modo oscuro */
+  formBusqueda.addEventListener('submit', e => e.preventDefault());
 
+  botonHeader.forEach(boton => {
+    boton.addEventListener('click', () => aplicarFiltroPorTipo(boton.id));
+  });
+}
 
-  
+// 🚀 Iniciar la app
+cargarListaPokemon().then(() => {
+  cargarPokemones(listaGlobal.slice(0, 20));
+  inicializarEventos();
+});
