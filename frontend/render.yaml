@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: pokedex-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./build
+    envVars:
+      - key: NODE_VERSION
+        value: 18.0.0 
