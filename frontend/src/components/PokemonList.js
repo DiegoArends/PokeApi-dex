@@ -43,7 +43,7 @@ export default function PokemonList({ busqueda, tipo }) {
       const coincidencias = listaGlobal.filter(p =>
         normalizarTexto(p.name).includes(valor)
       );
-      cargarPokemones(coincidencias.slice(0, 10));
+      cargarPokemones(coincidencias.slice(0, 20));
       return;
     }
 
@@ -57,8 +57,14 @@ export default function PokemonList({ busqueda, tipo }) {
       fetch(`https://pokeapi.co/api/v2/type/${tipo}`)
         .then(res => res.json())
         .then(data => {
-          const pokemonsTipo = data.pokemon.map(p => p.pokemon);
-          return Promise.all(pokemonsTipo.slice(0, 20).map(p => obtenerDetalle(p.url)));
+          const pokemonsTipo = data.pokemon
+            .map(p => p.pokemon)
+            .filter(p => {
+              // Extraer el ID de la URL
+              const match = p.url.match(/\/pokemon\/(\d+)\//);
+              return match && parseInt(match[1]) <= 721;
+            });
+          return Promise.all(pokemonsTipo.slice(0, 50).map(p => obtenerDetalle(p.url)));
         })
         .then(data => {
           setPokemones(data);
